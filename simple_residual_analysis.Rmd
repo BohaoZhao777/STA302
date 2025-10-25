@@ -30,8 +30,8 @@ df <- df %>%
     Street = as.factor(Street)
   )
 
-cat("数据维度:", nrow(df), "行 x", ncol(df), "列\n")
-cat("注意：此文件只包含模型分析需要的9个预测变量\n")
+cat("Data dimensions:", nrow(df), "rows x", ncol(df), "columns\n")
+cat("Note: This file contains only the 9 predictor variables needed for model analysis\n")
 ```
 
 
@@ -123,7 +123,7 @@ final_grid
 ```{r save-plot}
 
 ggsave("residual_plots_grid.png", final_grid, width = 14, height = 10, dpi = 300)
-cat("图片已保存为: residual_plots_grid.png\n")
+cat("Image saved as: residual_plots_grid.png\n")
 ```
 
 ---
