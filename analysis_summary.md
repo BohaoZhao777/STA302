@@ -1,13 +1,13 @@
 # Ames Housing Residual Analysis Summary
 
 ## Analysis Overview
-This analysis uses the Ames Housing dataset to perform residual analysis on a linear regression model with 10 predictors and 1 interaction term.
+This analysis uses the Ames Housing dataset to perform residual analysis on a linear regression model with 10 predictors and 1 interaction term (11 total model terms).
 
 ## Dataset Information
 - **Source**: AmesHousing R package
 - **File**: `ames_housing_model.csv`
 - **Sample Size**: 2,930 observations
-- **Variables**: 11 total (1 response + 10 predictors)
+- **Variables**: 11 total (1 response + 10 predictors + 1 interaction term)
 
 ## Variables Used
 
@@ -28,8 +28,10 @@ This analysis uses the Ames Housing dataset to perform residual analysis on a li
 - **Lot_Area**: Lot size in square feet
 - **TotRms_AbvGrd**: Total rooms above ground
 
-### Interaction Term
+### Interaction Term (1)
 - **Street:Garage_Cars**: Interaction between street type and garage capacity
+
+**Total Model Terms: 11 (10 predictors + 1 interaction term)**
 
 ## Model Specification
 ```
@@ -41,7 +43,7 @@ Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area +
 ## Analysis Components
 
 ### 1. Model Fitting
-- Linear regression with 10 predictors
+- Linear regression with 10 predictors + 1 interaction term (11 total terms)
 - Includes interaction term between Street and Garage_Cars
 - Model performance metrics (R-squared, F-statistic, etc.)
 
@@ -66,7 +68,7 @@ Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area +
 
 ## Output Files
 - **Analysis Report**: `simple_residual_analysis.Rmd`
-- **Residual Plots**: `residual_plots_10_predictors.png`
+- **Residual Plots**: `residual_plots_11_terms.png`
 - **Data File**: `ames_housing_model.csv`
 
 ## Key Features
@@ -75,6 +77,7 @@ Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area +
 - Model assumption testing
 - High-quality diagnostic plots
 - Statistical significance testing
+- **Total Model Terms: 11 (10 predictors + 1 interaction term)**
 
 ## Note
-The original request included `Wood_Deck_SF` as a predictor, but this variable is not available in the current dataset. The analysis uses the 10 available predictors instead.
+The original request included `Wood_Deck_SF` as a predictor, but this variable is not available in the current dataset. The analysis uses the 10 available predictors plus 1 interaction term (11 total model terms).

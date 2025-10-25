@@ -37,6 +37,7 @@ cat("Variables included:\n")
 cat("- Categorical: Street, Utilities\n")
 cat("- Numerical: Total_Bsmt_SF, Bedroom_AbvGr, Garage_Cars, Pool_Area, Gr_Liv_Area, Fireplaces, Lot_Area, TotRms_AbvGrd\n")
 cat("- Response: Sale_Price\n")
+cat("- Interaction: Street:Garage_Cars\n")
 cat("Note: Wood_Deck_SF not available in current dataset\n")
 ```
 
@@ -44,7 +45,7 @@ cat("Note: Wood_Deck_SF not available in current dataset\n")
 
 ```{r fit-model}
 
-# Fit model with 10 predictors including interaction term
+# Fit model with 10 predictors + 1 interaction term (11 total terms)
 mod <- lm(
   Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area + 
     Gr_Liv_Area + Fireplaces + Lot_Area + TotRms_AbvGrd + 
@@ -52,7 +53,7 @@ mod <- lm(
   data = df
 )
 
-cat("Model with 10 predictors and Street:Garage_Cars interaction:\n")
+cat("Model with 10 predictors + 1 interaction term (11 total terms):\n")
 summary(mod)
 
 # Display model coefficients and interaction effects
@@ -91,6 +92,8 @@ predictors_cat <- c("Street", "Utilities")
 cat("Numerical predictors:", length(predictors_num), "\n")
 cat("Categorical predictors:", length(predictors_cat), "\n")
 cat("Total predictors:", length(predictors_num) + length(predictors_cat), "\n")
+cat("Plus 1 interaction term: Street:Garage_Cars\n")
+cat("Total model terms: 11 (10 predictors + 1 interaction)\n")
 
 # Model performance metrics
 cat("\n=== Model Performance ===\n")
@@ -154,6 +157,7 @@ cat("Generated", length(all_plots), "residual plots total\n")
 cat("- 1 fitted values plot\n")
 cat("-", length(plots_pred_num), "numerical predictor plots\n")
 cat("-", length(plots_pred_cat), "categorical predictor plots\n")
+cat("Model includes 10 predictors + 1 interaction term (11 total terms)\n")
 cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
 ```
 
@@ -175,9 +179,9 @@ cat("Grid layout: 4 columns with", length(all_plots), "total plots\n")
 ```{r save-plot}
 
 # Save the comprehensive residual plots
-ggsave("residual_plots_10_predictors.png", final_grid, width = 16, height = 12, dpi = 300)
-cat("Image saved as: residual_plots_10_predictors.png\n")
-cat("This includes plots for all 10 predictors plus fitted values\n")
+ggsave("residual_plots_11_terms.png", final_grid, width = 16, height = 12, dpi = 300)
+cat("Image saved as: residual_plots_11_terms.png\n")
+cat("This includes plots for all 10 predictors + 1 interaction term (11 total terms)\n")
 cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
 ```
 
