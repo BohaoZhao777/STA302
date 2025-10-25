@@ -1,0 +1,321 @@
+---
+title: "Ames Housing 残差分析报告"
+subtitle: "初步线性模型假设检验"
+author: "数据分析"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 10, fig.height = 6)
+```
+
+## 环境设置与数据加载
+
+```{r load-packages}
+# 加载必要的包
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(broom)
+library(knitr)
+
+# 检查包是否加载成功
+cat("包加载完成!\n")
+```
+
+```{r load-data}
+# 读取数据（只包含9个预测变量的模型数据）
+df <- read_csv("ames_housing_model.csv", show_col_types = FALSE)
+
+# 数据概览
+cat("数据维度:", nrow(df), "行 x", ncol(df), "列\n")
+cat("列名:", paste(colnames(df), collapse = ", "), "\n")
+cat("注意：此文件只包含模型分析需要的9个预测变量\n")
+
+# 显示前几行
+head(df, 5)
+```
+
+```{r data-preparation}
+# 数据预处理
+df <- df %>%
+  mutate(
+    Street = as.factor(Street)
+  )
+
+# 检查数据类型
+cat("数据类型检查:\n")
+str(df)
+```
+
+## 初步模型拟合
+
+```{r fit-model}
+# 拟合初步线性模型
+# 响应变量: Sale_Price
+# 9个预测变量: Total_Bsmt_SF, Garage_Cars, Pool_Area, Gr_Liv_Area, 
+#              Fireplaces, Lot_Area, Bedroom_AbvGr, TotRms_AbvGrd, Street
+
+mod <- lm(
+  Sale_Price ~ Total_Bsmt_SF + Garage_Cars + Pool_Area + Gr_Liv_Area +
+    Fireplaces + Lot_Area + Bedroom_AbvGr + TotRms_AbvGrd + Street,
+  data = df
+)
+
+# 模型摘要
+cat("模型摘要:\n")
+summary(mod)
+```
+
+```{r model-coefficients}
+# 系数表与置信区间
+coef_table <- tidy(mod, conf.int = TRUE)
+print(kable(coef_table, digits = 3, caption = "模型系数表"))
+
+# 模型性能指标
+cat("模型性能:\n")
+cat("R-squared:", round(summary(mod)$r.squared, 4), "\n")
+cat("Adjusted R-squared:", round(summary(mod)$adj.r.squared, 4), "\n")
+cat("F-statistic:", round(summary(mod)$fstatistic[1], 2), "\n")
+```
+
+## 残差分析
+
+### 计算残差
+
+```{r calculate-residuals}
+# 计算学生化残差和拟合值
+resid_std <- rstudent(mod)
+fit_vals  <- fitted(mod)
+
+# 定义预测变量
+predictors_num <- c("Total_Bsmt_SF","Garage_Cars","Pool_Area","Gr_Liv_Area",
+                    "Fireplaces","Lot_Area","Bedroom_AbvGr","TotRms_AbvGrd")
+predictor_cat  <- "Street"
+
+cat("残差计算完成\n")
+cat("学生化残差范围:", round(range(resid_std), 3), "\n")
+cat("拟合值范围: $", round(range(fit_vals), 2), "\n")
+```
+
+### 残差分析函数
+
+```{r residual-functions}
+# 数值型自变量的残差图函数
+plot_resid_vs_numeric <- function(x, xlab){
+  ggplot(data = data.frame(x = x, resid = resid_std), aes(x = x, y = resid)) +
+    geom_point(size = 1.2, alpha = 0.8, color = "steelblue") +
+    geom_hline(yintercept = 0, linetype = 2, color = "red") +
+    geom_smooth(se = FALSE, color = "blue") +
+    labs(x = xlab, y = "Studentized residuals",
+         title = paste("Residuals vs", xlab)) +
+    theme_minimal()
+}
+
+# 分类变量的残差图函数
+plot_resid_vs_factor <- function(f, flab){
+  ggplot(data = data.frame(f = f, resid = resid_std), aes(x = f, y = resid)) +
+    geom_boxplot(outlier.size = 0.9, fill = "lightblue", alpha = 0.7) +
+    geom_hline(yintercept = 0, linetype = 2, color = "red") +
+    labs(x = flab, y = "Studentized residuals",
+         title = paste("Residuals vs", flab)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# 残差 vs 拟合值图
+p_fitted <- ggplot(data = data.frame(fit = fit_vals, resid = resid_std),
+                   aes(x = fit, y = resid)) +
+  geom_point(size = 1.2, alpha = 0.8, color = "steelblue") +
+  geom_hline(yintercept = 0, linetype = 2, color = "red") +
+  geom_smooth(se = FALSE, color = "blue") +
+  labs(x = "Fitted values", y = "Studentized residuals",
+       title = "Residuals vs Fitted Values") +
+  theme_minimal()
+```
+
+### 生成残差图
+
+```{r generate-residual-plots}
+# 生成数值型自变量的残差图
+plots_pred <- lapply(predictors_num, function(v){
+  plot_resid_vs_numeric(df[[v]], v)
+})
+
+# 生成分类变量的残差图
+p_street <- plot_resid_vs_factor(df[[predictor_cat]], predictor_cat)
+
+# 合并所有图
+all_plots <- c(list(p_fitted), plots_pred, list(p_street))
+
+cat("生成了", length(all_plots), "张残差图\n")
+```
+
+### 网格布局显示
+
+```{r display-grid, fig.width=15, fig.height=12}
+# 3列网格布局
+final_grid <- wrap_plots(all_plots, ncol = 3)
+
+# 显示网格图
+final_grid
+```
+
+### 单独显示关键图表
+
+```{r key-plots, fig.width=12, fig.height=8}
+# 残差 vs 拟合值
+print(p_fitted)
+
+# 残差 vs 最重要的数值变量
+print(plots_pred[[1]])  # Total_Bsmt_SF
+print(plots_pred[[3]])  # Gr_Liv_Area
+
+# 残差 vs 分类变量
+print(p_street)
+```
+
+## 假设检验评估
+
+### 线性性检验
+
+```{r linearity-test}
+# 检查残差 vs 拟合值图
+cat("线性性检验:\n")
+cat("观察残差 vs 拟合值图，检查是否有明显的非线性模式\n")
+cat("理想情况：残差应该随机分布在 y=0 线周围\n")
+
+# 计算残差与拟合值的相关性
+correlation <- cor(fit_vals, resid_std)
+cat("残差与拟合值的相关性:", round(correlation, 4), "\n")
+cat("相关性接近0表示线性关系良好\n")
+```
+
+### 正态性检验
+
+```{r normality-test}
+# Q-Q图
+qq_plot <- ggplot(data.frame(residuals = resid_std), aes(sample = residuals)) +
+  stat_qq(alpha = 0.6, color = "steelblue") +
+  stat_qq_line(color = "red") +
+  labs(title = "Q-Q Plot of Studentized Residuals",
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal()
+
+print(qq_plot)
+
+# Shapiro-Wilk 检验
+shapiro_test <- shapiro.test(resid_std)
+cat("Shapiro-Wilk 正态性检验:\n")
+cat("W =", round(shapiro_test$statistic, 4), "\n")
+cat("p-value =", format.pval(shapiro_test$p.value), "\n")
+if(shapiro_test$p.value < 0.05) {
+  cat("结论: 拒绝正态性假设 (p < 0.05)\n")
+} else {
+  cat("结论: 不能拒绝正态性假设 (p >= 0.05)\n")
+}
+```
+
+### 等方差性检验
+
+```{r homoscedasticity-test}
+# 尺度-位置图
+scale_location <- ggplot(data.frame(fitted = fit_vals, 
+                                   sqrt_std_res = sqrt(abs(resid_std))), 
+                        aes(x = fitted, y = sqrt_std_res)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(se = FALSE, color = "blue") +
+  labs(title = "Scale-Location Plot",
+       x = "Fitted Values", y = "√|Standardized Residuals|") +
+  theme_minimal()
+
+print(scale_location)
+
+cat("等方差性检验:\n")
+cat("观察尺度-位置图，检查是否有漏斗形状\n")
+cat("理想情况：点应该随机分布，无明显的趋势\n")
+```
+
+### 独立性检验
+
+```{r independence-test}
+# 残差 vs 杠杆值图
+leverage_plot <- ggplot(data.frame(leverage = hatvalues(mod), 
+                                   residuals = resid_std), 
+                        aes(x = leverage, y = residuals)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Residuals vs Leverage",
+       x = "Leverage", y = "Studentized Residuals") +
+  theme_minimal()
+
+print(leverage_plot)
+
+# 检查影响点
+cooks_d <- cooks.distance(mod)
+influential_threshold <- 4/length(fitted(mod))
+influential_points <- which(cooks_d > influential_threshold)
+
+cat("独立性检验:\n")
+cat("影响点检查 (Cook's distance > 4/n):\n")
+if(length(influential_points) > 0) {
+  cat("发现", length(influential_points), "个影响点\n")
+  cat("行号:", paste(influential_points, collapse = ", "), "\n")
+} else {
+  cat("未发现显著影响点\n")
+}
+```
+
+## 模型诊断摘要
+
+```{r model-diagnostics}
+# 综合诊断
+cat("=== 模型诊断摘要 ===\n")
+cat("1. 线性性: 检查残差 vs 拟合值图\n")
+cat("2. 正态性: 检查Q-Q图和Shapiro-Wilk检验\n")
+cat("3. 等方差性: 检查尺度-位置图\n")
+cat("4. 独立性: 检查残差 vs 杠杆值图\n")
+
+# 异常值检查
+outliers <- which(abs(resid_std) > 3)
+cat("\n异常值检查 (|studentized residuals| > 3):\n")
+if(length(outliers) > 0) {
+  cat("发现", length(outliers), "个异常值\n")
+  cat("行号:", paste(outliers, collapse = ", "), "\n")
+} else {
+  cat("未发现极端异常值\n")
+}
+
+# 模型性能
+cat("\n模型性能:\n")
+cat("R-squared:", round(summary(mod)$r.squared, 4), "\n")
+cat("Adjusted R-squared:", round(summary(mod)$adj.r.squared, 4), "\n")
+```
+
+## 结论与建议
+
+```{r conclusions}
+cat("=== 分析结论 ===\n")
+cat("1. 模型解释了", round(summary(mod)$r.squared*100, 1), "%的房价方差\n")
+cat("2. 请检查上述假设检验图表，识别可能的假设违反\n")
+cat("3. 如果发现假设违反，需要在下一阶段进行修正\n")
+cat("4. 常见修正方法包括：变量变换、添加交互项、处理异常值等\n")
+
+# 显著变量
+sig_vars <- coef_table[coef_table$p.value < 0.05, ]
+cat("\n显著变量 (p < 0.05):", nrow(sig_vars), "个\n")
+if(nrow(sig_vars) > 0) {
+  for(i in 1:nrow(sig_vars)) {
+    var_name <- sig_vars$term[i]
+    coef_val <- round(sig_vars$estimate[i], 2)
+    p_val <- format.pval(sig_vars$p.value[i])
+    cat("-", var_name, ": β =", coef_val, "(p =", p_val, ")\n")
+  }
+}
+```
+
+---
+
+*此报告展示了Ames Housing数据的初步线性模型残差分析结果。请仔细检查所有假设检验图表，为下一阶段的模型修正做准备。*

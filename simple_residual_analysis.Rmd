@@ -1,0 +1,133 @@
+---
+title: "Ames Housing 残差分析"
+author: "数据分析"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## 环境设置
+
+```{r load-packages}
+# 加载必要的包
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+```
+
+## 数据加载与预处理
+
+```{r load-data}
+# 读取数据（只包含9个预测变量的模型数据）
+df <- read_csv("ames_housing_model.csv", show_col_types = FALSE)
+
+# 数据预处理
+df <- df %>%
+  mutate(
+    Street = as.factor(Street)
+  )
+
+cat("数据维度:", nrow(df), "行 x", ncol(df), "列\n")
+cat("注意：此文件只包含模型分析需要的9个预测变量\n")
+```
+
+## 拟合初步模型
+
+```{r fit-model}
+# 拟合模型
+mod <- lm(
+  Sale_Price ~ Total_Bsmt_SF + Garage_Cars + Pool_Area + Gr_Liv_Area +
+    Fireplaces + Lot_Area + Bedroom_AbvGr + TotRms_AbvGrd + Street,
+  data = df
+)
+
+# 模型摘要
+summary(mod)
+```
+
+## 残差分析
+
+```{r calculate-residuals}
+# 计算残差
+resid_std <- rstudent(mod)
+fit_vals  <- fitted(mod)
+
+# 定义预测变量
+predictors_num <- c("Total_Bsmt_SF","Garage_Cars","Pool_Area","Gr_Liv_Area",
+                    "Fireplaces","Lot_Area","Bedroom_AbvGr","TotRms_AbvGrd")
+predictor_cat  <- "Street"
+```
+
+## 残差图函数
+
+```{r residual-functions}
+# 数值型自变量残差图
+plot_resid_vs_numeric <- function(x, xlab){
+  ggplot(data = data.frame(x = x, resid = resid_std), aes(x = x, y = resid)) +
+    geom_point(size = 1.2, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    labs(x = xlab, y = "Studentized residuals",
+         title = paste("Residuals vs", xlab)) +
+    theme_minimal()
+}
+
+# 分类变量残差图
+plot_resid_vs_factor <- function(f, flab){
+  ggplot(data = data.frame(f = f, resid = resid_std), aes(x = f, y = resid)) +
+    geom_boxplot(outlier.size = 0.9) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    labs(x = flab, y = "Studentized residuals",
+         title = paste("Residuals vs", flab)) +
+    theme_minimal()
+}
+
+# 残差 vs 拟合值
+p_fitted <- ggplot(data = data.frame(fit = fit_vals, resid = resid_std),
+                   aes(x = fit, y = resid)) +
+  geom_point(size = 1.2, alpha = 0.8) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(x = "Fitted values", y = "Studentized residuals",
+       title = "Residuals vs Fitted") +
+  theme_minimal()
+```
+
+## 生成残差图
+
+```{r generate-plots}
+# 生成数值型自变量的残差图
+plots_pred <- lapply(predictors_num, function(v){
+  plot_resid_vs_numeric(df[[v]], v)
+})
+
+# 生成分类变量的残差图
+p_street <- plot_resid_vs_factor(df[[predictor_cat]], predictor_cat)
+
+# 合并所有图
+all_plots <- c(list(p_fitted), plots_pred, list(p_street))
+```
+
+## 网格显示
+
+```{r display-grid, fig.width=15, fig.height=12}
+# 3列网格布局
+final_grid <- wrap_plots(all_plots, ncol = 3)
+
+# 显示网格图
+final_grid
+```
+
+## 保存图片
+
+```{r save-plot}
+# 保存为高清图片
+ggsave("residual_plots_grid.png", final_grid, width = 14, height = 10, dpi = 300)
+cat("图片已保存为: residual_plots_grid.png\n")
+```
+
+---
+
+*基于 Res.ini 代码生成的残差分析报告*
