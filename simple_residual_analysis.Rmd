@@ -27,25 +27,53 @@ df <- read_csv("ames_housing_model.csv", show_col_types = FALSE)
 
 df <- df %>%
   mutate(
-    Street = as.factor(Street)
+    Street = as.factor(Street),
+    Utilities = as.factor(Utilities)
   )
 
 cat("Data dimensions:", nrow(df), "rows x", ncol(df), "columns\n")
-cat("Note: This file contains only the 9 predictor variables needed for model analysis\n")
+cat("Note: This file contains 10 predictor variables for model analysis\n")
+cat("Variables included:\n")
+cat("- Categorical: Street, Utilities\n")
+cat("- Numerical: Total_Bsmt_SF, Bedroom_AbvGr, Garage_Cars, Pool_Area, Gr_Liv_Area, Fireplaces, Lot_Area, TotRms_AbvGrd\n")
+cat("- Response: Sale_Price\n")
+cat("Note: Wood_Deck_SF not available in current dataset\n")
 ```
 
 
 
 ```{r fit-model}
 
+# Fit model with 10 predictors including interaction term
 mod <- lm(
-  Sale_Price ~ Total_Bsmt_SF + Garage_Cars + Pool_Area + Gr_Liv_Area +
-    Fireplaces + Lot_Area + Bedroom_AbvGr + TotRms_AbvGrd + Street,
+  Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area + 
+    Gr_Liv_Area + Fireplaces + Lot_Area + TotRms_AbvGrd + 
+    Street + Utilities + Street:Garage_Cars,
   data = df
 )
 
-
+cat("Model with 10 predictors and Street:Garage_Cars interaction:\n")
 summary(mod)
+
+# Display model coefficients and interaction effects
+cat("\n=== Model Coefficients ===\n")
+coef_summary <- summary(mod)$coefficients
+print(round(coef_summary, 4))
+
+# Check interaction term significance
+interaction_terms <- rownames(coef_summary)[grepl(":", rownames(coef_summary))]
+if(length(interaction_terms) > 0) {
+  cat("\n=== Interaction Terms ===\n")
+  for(term in interaction_terms) {
+    p_val <- coef_summary[term, "Pr(>|t|)"]
+    cat(term, ": p-value =", format.pval(p_val), "\n")
+    if(p_val < 0.05) {
+      cat("  -> Significant interaction (p < 0.05)\n")
+    } else {
+      cat("  -> Non-significant interaction (p >= 0.05)\n")
+    }
+  }
+}
 ```
 
 
@@ -55,10 +83,21 @@ summary(mod)
 resid_std <- rstudent(mod)
 fit_vals  <- fitted(mod)
 
+# Define predictor variables
+predictors_num <- c("Total_Bsmt_SF", "Bedroom_AbvGr", "Garage_Cars", "Pool_Area", 
+                    "Gr_Liv_Area", "Fireplaces", "Lot_Area", "TotRms_AbvGrd")
+predictors_cat <- c("Street", "Utilities")
 
-predictors_num <- c("Total_Bsmt_SF","Garage_Cars","Pool_Area","Gr_Liv_Area",
-                    "Fireplaces","Lot_Area","Bedroom_AbvGr","TotRms_AbvGrd")
-predictor_cat  <- "Street"
+cat("Numerical predictors:", length(predictors_num), "\n")
+cat("Categorical predictors:", length(predictors_cat), "\n")
+cat("Total predictors:", length(predictors_num) + length(predictors_cat), "\n")
+
+# Model performance metrics
+cat("\n=== Model Performance ===\n")
+cat("R-squared:", round(summary(mod)$r.squared, 4), "\n")
+cat("Adjusted R-squared:", round(summary(mod)$adj.r.squared, 4), "\n")
+cat("F-statistic:", round(summary(mod)$fstatistic[1], 2), "\n")
+cat("p-value (F-test):", format.pval(pf(summary(mod)$fstatistic[1], summary(mod)$fstatistic[2], summary(mod)$fstatistic[3], lower.tail = FALSE)), "\n")
 ```
 
 
@@ -98,32 +137,48 @@ p_fitted <- ggplot(data = data.frame(fit = fit_vals, resid = resid_std),
 
 ```{r generate-plots}
 
-plots_pred <- lapply(predictors_num, function(v){
+# Generate plots for numerical predictors
+plots_pred_num <- lapply(predictors_num, function(v){
   plot_resid_vs_numeric(df[[v]], v)
 })
 
+# Generate plots for categorical predictors
+plots_pred_cat <- lapply(predictors_cat, function(v){
+  plot_resid_vs_factor(df[[v]], v)
+})
 
-p_street <- plot_resid_vs_factor(df[[predictor_cat]], predictor_cat)
+# Combine all plots
+all_plots <- c(list(p_fitted), plots_pred_num, plots_pred_cat)
 
-all_plots <- c(list(p_fitted), plots_pred, list(p_street))
+cat("Generated", length(all_plots), "residual plots total\n")
+cat("- 1 fitted values plot\n")
+cat("-", length(plots_pred_num), "numerical predictor plots\n")
+cat("-", length(plots_pred_cat), "categorical predictor plots\n")
+cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
 ```
 
 
 
-```{r display-grid, fig.width=15, fig.height=12}
+```{r display-grid, fig.width=18, fig.height=15}
 
-final_grid <- wrap_plots(all_plots, ncol = 3)
+# Adjust grid layout for more plots
+final_grid <- wrap_plots(all_plots, ncol = 4)
 
-
+# Display the grid
 final_grid
+
+cat("Grid layout: 4 columns with", length(all_plots), "total plots\n")
 ```
 
 
 
 ```{r save-plot}
 
-ggsave("residual_plots_grid.png", final_grid, width = 14, height = 10, dpi = 300)
-cat("Image saved as: residual_plots_grid.png\n")
+# Save the comprehensive residual plots
+ggsave("residual_plots_10_predictors.png", final_grid, width = 16, height = 12, dpi = 300)
+cat("Image saved as: residual_plots_10_predictors.png\n")
+cat("This includes plots for all 10 predictors plus fitted values\n")
+cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
 ```
 
 ---
