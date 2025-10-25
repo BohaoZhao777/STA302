@@ -22,9 +22,15 @@ library(patchwork)
 
 ```{r load-data}
 
+# Check if CSV file exists, if not create it
+if(!file.exists("ames_11_predictors.csv")) {
+  cat("CSV file not found. Running export script to create it...\n")
+  source("export_11_predictors.R")
+}
+
 df <- read_csv("ames_11_predictors.csv", show_col_types = FALSE)
 
-
+# Convert categorical variables to factors
 df <- df %>%
   mutate(
     Street = as.factor(Street),
