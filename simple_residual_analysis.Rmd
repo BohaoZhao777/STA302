@@ -22,7 +22,7 @@ library(patchwork)
 
 ```{r load-data}
 
-df <- read_csv("ames_housing_model.csv", show_col_types = FALSE)
+df <- read_csv("ames_11_predictors.csv", show_col_types = FALSE)
 
 
 df <- df %>%
@@ -32,28 +32,28 @@ df <- df %>%
   )
 
 cat("Data dimensions:", nrow(df), "rows x", ncol(df), "columns\n")
-cat("Note: This file contains 10 predictor variables for model analysis\n")
+cat("Note: This file contains 11 predictor variables for model analysis\n")
 cat("Variables included:\n")
 cat("- Categorical: Street, Utilities\n")
-cat("- Numerical: Total_Bsmt_SF, Bedroom_AbvGr, Garage_Cars, Pool_Area, Gr_Liv_Area, Fireplaces, Lot_Area, TotRms_AbvGrd\n")
+cat("- Numerical: Total_Bsmt_SF, Bedroom_AbvGr, Garage_Cars, Pool_Area, Gr_Liv_Area, Wood_Deck_SF, Fireplaces, Lot_Area, TotRms_AbvGrd\n")
 cat("- Response: Sale_Price\n")
 cat("- Interaction: Street:Garage_Cars\n")
-cat("Note: Wood_Deck_SF not available in current dataset\n")
+cat("Total model terms: 12 (11 predictors + 1 interaction)\n")
 ```
 
 
 
 ```{r fit-model}
 
-# Fit model with 10 predictors + 1 interaction term (11 total terms)
+# Fit model with 11 predictors + 1 interaction term (12 total terms)
 mod <- lm(
   Sale_Price ~ Total_Bsmt_SF + Bedroom_AbvGr + Garage_Cars + Pool_Area + 
-    Gr_Liv_Area + Fireplaces + Lot_Area + TotRms_AbvGrd + 
+    Gr_Liv_Area + Wood_Deck_SF + Fireplaces + Lot_Area + TotRms_AbvGrd + 
     Street + Utilities + Street:Garage_Cars,
   data = df
 )
 
-cat("Model with 10 predictors + 1 interaction term (11 total terms):\n")
+cat("Model with 11 predictors + 1 interaction term (12 total terms):\n")
 summary(mod)
 
 # Display model coefficients and interaction effects
@@ -86,14 +86,14 @@ fit_vals  <- fitted(mod)
 
 # Define predictor variables
 predictors_num <- c("Total_Bsmt_SF", "Bedroom_AbvGr", "Garage_Cars", "Pool_Area", 
-                    "Gr_Liv_Area", "Fireplaces", "Lot_Area", "TotRms_AbvGrd")
+                    "Gr_Liv_Area", "Wood_Deck_SF", "Fireplaces", "Lot_Area", "TotRms_AbvGrd")
 predictors_cat <- c("Street", "Utilities")
 
 cat("Numerical predictors:", length(predictors_num), "\n")
 cat("Categorical predictors:", length(predictors_cat), "\n")
 cat("Total predictors:", length(predictors_num) + length(predictors_cat), "\n")
 cat("Plus 1 interaction term: Street:Garage_Cars\n")
-cat("Total model terms: 11 (10 predictors + 1 interaction)\n")
+cat("Total model terms: 12 (11 predictors + 1 interaction)\n")
 
 # Model performance metrics
 cat("\n=== Model Performance ===\n")
@@ -157,8 +157,7 @@ cat("Generated", length(all_plots), "residual plots total\n")
 cat("- 1 fitted values plot\n")
 cat("-", length(plots_pred_num), "numerical predictor plots\n")
 cat("-", length(plots_pred_cat), "categorical predictor plots\n")
-cat("Model includes 10 predictors + 1 interaction term (11 total terms)\n")
-cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
+cat("Model includes 11 predictors + 1 interaction term (12 total terms)\n")
 ```
 
 
@@ -179,10 +178,9 @@ cat("Grid layout: 4 columns with", length(all_plots), "total plots\n")
 ```{r save-plot}
 
 # Save the comprehensive residual plots
-ggsave("residual_plots_11_terms.png", final_grid, width = 16, height = 12, dpi = 300)
-cat("Image saved as: residual_plots_11_terms.png\n")
-cat("This includes plots for all 10 predictors + 1 interaction term (11 total terms)\n")
-cat("Note: Wood_Deck_SF not included as it's not available in the dataset\n")
+ggsave("residual_plots_12_terms.png", final_grid, width = 16, height = 12, dpi = 300)
+cat("Image saved as: residual_plots_12_terms.png\n")
+cat("This includes plots for all 11 predictors + 1 interaction term (12 total terms)\n")
 ```
 
 ---
