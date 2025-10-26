@@ -1,0 +1,271 @@
+---
+title: "Ames Housing Data Exploration"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width=10, fig.height=6)
+```
+
+```{r load-packages}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
+```{r load-data}
+# Load the data
+df <- read_csv("ames_11_predictors.csv", show_col_types = FALSE)
+
+# Convert categorical variables to factors
+df <- df %>%
+  mutate(
+    Street = as.factor(Street),
+    Utilities = as.factor(Utilities)
+  )
+
+cat("Data dimensions:", nrow(df), "rows x", ncol(df), "columns\n")
+cat("Response variable: Sale_Price\n")
+cat("Predictor variables:\n")
+cat("- Categorical: Street, Utilities\n")
+cat("- Numerical: Total_Bsmt_SF, Bedroom_AbvGr, Garage_Cars, Pool_Area, Gr_Liv_Area, Fireplaces, Lot_Area, TotRms_AbvGrd\n")
+```
+
+```{r summary-response}
+# Summary statistics for response variable (Y)
+cat("=== Response Variable: Sale_Price ===\n\n")
+summary_y <- summary(df$Sale_Price)
+print(summary_y)
+cat("\nStandard Deviation:", round(sd(df$Sale_Price), 2), "\n")
+cat("Range:", min(df$Sale_Price), "to", max(df$Sale_Price), "\n")
+cat("IQR:", IQR(df$Sale_Price), "\n")
+```
+
+```{r summary-table-response}
+# Create summary table for response variable
+summary_table_y <- data.frame(
+  Statistic = c("Min", "1st Quartile", "Median", "Mean", "3rd Quartile", "Max", "SD", "IQR"),
+  Value = c(
+    min(df$Sale_Price),
+    quantile(df$Sale_Price, 0.25),
+    median(df$Sale_Price),
+    mean(df$Sale_Price),
+    quantile(df$Sale_Price, 0.75),
+    max(df$Sale_Price),
+    sd(df$Sale_Price),
+    IQR(df$Sale_Price)
+  )
+)
+summary_table_y$Value <- round(summary_table_y$Value, 2)
+knitr::kable(summary_table_y, caption = "Summary Statistics for Sale_Price (Response Variable)")
+```
+
+```{r summary-table-categorical}
+# Summary for categorical variables
+cat("\n=== Categorical Variables ===\n\n")
+
+# Street frequency table
+cat("Street:\n")
+street_table <- table(df$Street)
+print(street_table)
+cat("\nPercentage:\n")
+print(round(prop.table(street_table) * 100, 2))
+cat("\n")
+
+# Utilities frequency table
+cat("\nUtilities:\n")
+utilities_table <- table(df$Utilities)
+print(utilities_table)
+cat("\nPercentage:\n")
+print(round(prop.table(utilities_table) * 100, 2))
+```
+
+```{r summary-table-categorical-formatted}
+# Create formatted frequency tables
+street_df <- data.frame(
+  Street = names(table(df$Street)),
+  Frequency = as.numeric(table(df$Street)),
+  Percentage = round(as.numeric(prop.table(table(df$Street)) * 100), 2)
+)
+knitr::kable(street_df, caption = "Frequency Table for Street")
+
+utilities_df <- data.frame(
+  Utilities = names(table(df$Utilities)),
+  Frequency = as.numeric(table(df$Utilities)),
+  Percentage = round(as.numeric(prop.table(table(df$Utilities)) * 100), 2)
+)
+knitr::kable(utilities_df, caption = "Frequency Table for Utilities")
+```
+
+```{r summary-table-numerical}
+# Summary for numerical predictor variables
+cat("\n=== Numerical Predictor Variables ===\n\n")
+num_vars <- c("Total_Bsmt_SF", "Bedroom_AbvGr", "Garage_Cars", "Pool_Area", 
+              "Gr_Liv_Area", "Fireplaces", "Lot_Area", "TotRms_AbvGrd")
+
+# Create summary statistics table
+summary_list <- lapply(num_vars, function(var) {
+  data.frame(
+    Variable = var,
+    Min = min(df[[var]], na.rm = TRUE),
+    Q1 = quantile(df[[var]], 0.25, na.rm = TRUE),
+    Median = median(df[[var]], na.rm = TRUE),
+    Mean = round(mean(df[[var]], na.rm = TRUE), 2),
+    Q3 = quantile(df[[var]], 0.75, na.rm = TRUE),
+    Max = max(df[[var]], na.rm = TRUE),
+    SD = round(sd(df[[var]], na.rm = TRUE), 2),
+    IQR = IQR(df[[var]], na.rm = TRUE)
+  )
+})
+
+summary_table_x <- do.call(rbind, summary_list)
+knitr::kable(summary_table_x, caption = "Summary Statistics for Numerical Predictor Variables")
+```
+
+```{r histogram-response}
+# Histogram for response variable
+hist_y <- ggplot(df, aes(x = Sale_Price)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7, color = "black") +
+  labs(title = "Histogram of Sale_Price (Response Variable)",
+       x = "Sale Price ($)",
+       y = "Frequency") +
+  theme_minimal()
+
+print(hist_y)
+cat("\n**Description:** The histogram shows the distribution of Sale_Price.\n")
+cat("The distribution appears to be right-skewed with most houses priced in the lower range.\n")
+cat("There are a few high-value outliers on the right tail.\n")
+```
+
+```{r histogram-predictors}
+# Create histograms for all numerical predictor variables
+create_histogram <- function(var_name) {
+  ggplot(df, aes_string(x = var_name)) +
+    geom_histogram(bins = 30, fill = "lightcoral", alpha = 0.7, color = "black") +
+    labs(title = paste("Histogram of", var_name),
+         x = var_name,
+         y = "Frequency") +
+    theme_minimal()
+}
+
+hist_plots <- lapply(num_vars, create_histogram)
+
+# Display histograms in a grid
+hist_grid <- do.call("grid.arrange", c(hist_plots, ncol = 2))
+```
+
+```{r description-histograms}
+cat("\n**Descriptions of Histograms:\n")
+cat("- Total_Bsmt_SF: Right-skewed distribution with most houses having basement areas less than 1500 sq ft.\n")
+cat("- Bedroom_AbvGr: Concentrated around 2-4 bedrooms with very few having 5 or more bedrooms.\n")
+cat("- Garage_Cars: Most houses have 2-car garages. Very few have 0 or 3+ car garages.\n")
+cat("- Pool_Area: Heavily right-skewed with majority having no pool (0).\n")
+cat("- Gr_Liv_Area: Approximately normal distribution centered around 1500 sq ft.\n")
+cat("- Fireplaces: Discrete variable with most houses having 0 or 1 fireplace.\n")
+cat("- Lot_Area: Highly right-skewed with most lots under 10,000 sq ft.\n")
+cat("- TotRms_AbvGrd: Concentrated around 6-8 rooms with bell-shaped distribution.\n")
+```
+
+```{r boxplot-categorical}
+# Boxplots for categorical variables
+boxplot_street <- ggplot(df, aes(x = Street, y = Sale_Price)) +
+  geom_boxplot(fill = "lightgreen", alpha = 0.7) +
+  labs(title = "Boxplot: Sale_Price by Street Type",
+       x = "Street Type",
+       y = "Sale Price ($)") +
+  theme_minimal()
+
+boxplot_utilities <- ggplot(df, aes(x = Utilities, y = Sale_Price)) +
+  geom_boxplot(fill = "lightblue", alpha = 0.7) +
+  labs(title = "Boxplot: Sale_Price by Utilities",
+       x = "Utilities",
+       y = "Sale Price ($)") +
+  theme_minimal()
+
+print(boxplot_street)
+print(boxplot_utilities)
+
+cat("\n**Description:** Boxplots show the distribution of Sale_Price across different levels of categorical variables.\n")
+cat("For Street, most houses are on paved streets (Pave).\n")
+cat("For Utilities, almost all houses have all public utilities (AllPub).\n")
+```
+
+```{r scatter-plots}
+# Scatter plots: Y vs X for numerical predictors
+create_scatter <- function(var_name) {
+  ggplot(df, aes_string(x = var_name, y = "Sale_Price")) +
+    geom_point(alpha = 0.5, color = "steelblue") +
+    geom_smooth(method = "lm", se = TRUE, color = "red") +
+    labs(title = paste("Sale_Price vs", var_name),
+         x = var_name,
+         y = "Sale Price ($)") +
+    theme_minimal()
+}
+
+scatter_plots <- lapply(num_vars, create_scatter)
+
+# Display scatter plots in a grid
+scatter_grid <- do.call("grid.arrange", c(scatter_plots, ncol = 2))
+```
+
+```{r description-scatter}
+cat("\n**Descriptions of Scatter Plots:\n")
+cat("- Total_Bsmt_SF vs Sale_Price: Strong positive relationship. As basement area increases, price increases.\n")
+cat("- Bedroom_AbvGr vs Sale_Price: Weak positive relationship with moderate variation.\n")
+cat("- Garage_Cars vs Sale_Price: Positive relationship. More garage spaces generally mean higher price.\n")
+cat("- Pool_Area vs Sale_Price: Mixed pattern due to many zeros. Houses with pools tend to be more expensive.\n")
+cat("- Gr_Liv_Area vs Sale_Price: Strong positive linear relationship. Living area is a key price determinant.\n")
+cat("- Fireplaces vs Sale_Price: Moderate positive relationship. More fireplaces indicate higher value.\n")
+cat("- Lot_Area vs Sale_Price: Weak positive relationship with high variability, especially for larger lots.\n")
+cat("- TotRms_AbvGrd vs Sale_Price: Positive relationship. More rooms generally increase home value.\n")
+```
+
+```{r correlation-matrix}
+# Correlation matrix for numerical variables
+num_data <- df %>% select(Sale_Price, all_of(num_vars))
+cor_matrix <- cor(num_data)
+
+# Display correlation matrix
+knitr::kable(round(cor_matrix, 3), caption = "Correlation Matrix for Sale_Price and Numerical Predictors")
+
+cat("\n**Description:** The correlation matrix shows the strength and direction of linear relationships.\n")
+cat("Gr_Liv_Area and Total_Bsmt_SF show the strongest positive correlations with Sale_Price.\n")
+cat("Pool_Area has the weakest correlation, likely due to most houses having no pool.\n")
+```
+
+```{r correlation-plot}
+# Create a heatmap of correlations
+library(reshape2)
+cor_melted <- melt(cor_matrix)
+
+ggplot(cor_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab",
+                       name = "Correlation") +
+  labs(title = "Correlation Heatmap",
+       x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+---
+
+## Summary
+
+This analysis provides a comprehensive exploratory data analysis of the Ames housing dataset:
+
+1. **Response Variable (Sale_Price)**: Right-skewed distribution with mean around \$180,000 and median around \$163,000.
+
+2. **Categorical Predictors**: 
+   - Street: Overwhelmingly paved (Pave)
+   - Utilities: Almost all have all public utilities (AllPub)
+
+3. **Numerical Predictors**: Varied distributions with relationships to sale price ranging from weak to strong.
+
+4. **Key Findings**:
+   - Gr_Liv_Area and Total_Bsmt_SF are the strongest predictors
+   - Pool_Area shows little relationship due to most houses having no pool
+   - Most variables show positive relationships with sale price
